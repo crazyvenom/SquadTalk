@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================================
-#  SquadTalk server — automatic setup for Oracle Cloud (Ubuntu, x86).
+#  SquadTalk server - automatic setup for Oracle Cloud (Ubuntu, x86).
 #  Paste this whole file into "Cloud-init script" when creating the
 #  server. It installs SquadTalk, opens the firewall, starts it on every
 #  boot, and checks for updates every night.
