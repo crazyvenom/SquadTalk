@@ -1,0 +1,40 @@
+name: Build SquadTalk
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Keep a copy of the app
+        uses: actions/upload-artifact@v4
+        with:
+          name: SquadTalk
+          path: target/release/squadtalk.exe
+
+      - name: Publish the download (Releases page)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp target/release/squadtalk.exe SquadTalk.exe
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest SquadTalk.exe \
+            --title "SquadTalk — latest build" \
+            --notes "Built automatically from commit ${GITHUB_SHA::7}. Download SquadTalk.exe below." \
+            --prerelease --target "$GITHUB_SHA"
