@@ -33,7 +33,10 @@ struct State {
     clients: BTreeMap<u32, Client>,
     next_session: u32,
     password: String,
-    owner_uid: String,
+    owner_code: String,
+    owner_uids: Vec<String>,
+    on_save: SaveFn,
+    log: bool,
 }
 
 impl State {
@@ -58,10 +61,17 @@ impl State {
         }
     }
 
-    fn save_rooms(&self) {
-        let names: Vec<String> = self.rooms.iter().map(|r| r.name.clone()).collect();
-        crate::config::cfg().host_rooms = names;
-        crate::config::save();
+    fn save(&self) {
+        (self.on_save)(Saved {
+            rooms: self.rooms.iter().map(|r| r.name.clone()).collect(),
+            owner_uids: self.owner_uids.clone(),
+        });
+    }
+
+    fn log(&self, msg: &str) {
+        if self.log {
+            println!("{msg}");
+        }
     }
 
     fn room_exists(&self, id: u32) -> bool {
@@ -99,12 +109,30 @@ impl Drop for ServerHandle {
     }
 }
 
-pub fn start(
-    port: u16,
-    password: String,
-    owner_uid: String,
-    room_names: Vec<String>,
-) -> std::io::Result<ServerHandle> {
+/// What the server wants remembered between restarts.
+pub struct Saved {
+    pub rooms: Vec<String>,
+    pub owner_uids: Vec<String>,
+}
+
+pub type SaveFn = Arc<dyn Fn(Saved) + Send + Sync>;
+
+pub struct Options {
+    pub port: u16,
+    /// Password everyone needs (empty = no password).
+    pub password: String,
+    /// Typing this as the password makes that person an owner, permanently.
+    pub owner_code: String,
+    /// Public IDs of people who are owners.
+    pub owner_uids: Vec<String>,
+    pub rooms: Vec<String>,
+    pub on_save: SaveFn,
+    /// Print activity to the console (for the standalone server).
+    pub log: bool,
+}
+
+pub fn start(opts: Options) -> std::io::Result<ServerHandle> {
+    let Options { port, password, owner_code, owner_uids, rooms: room_names, on_save, log } = opts;
     let listener = TcpListener::bind(("0.0.0.0", port))?;
     let udp = UdpSocket::bind(("0.0.0.0", port))?;
     udp.set_read_timeout(Some(Duration::from_millis(500)))?;
@@ -127,7 +155,10 @@ pub fn start(
         clients: BTreeMap::new(),
         next_session: 1,
         password,
-        owner_uid,
+        owner_code,
+        owner_uids,
+        on_save,
+        log,
     }));
     let running = Arc::new(AtomicBool::new(true));
 
@@ -189,8 +220,15 @@ fn handle_conn(stream: TcpStream, st: Arc<Mutex<State>>) {
     let session;
     {
         let mut s = lk(&st);
-        let owner = uid == s.owner_uid;
+        let mut owner = s.owner_uids.contains(&uid);
+        if !owner && !s.owner_code.is_empty() && password == s.owner_code {
+            s.owner_uids.push(uid.clone());
+            s.save();
+            s.log(&format!("{name} used the owner code and is now an owner."));
+            owner = true;
+        }
         if !owner && !s.password.is_empty() && password != s.password {
+            s.log(&format!("{name} tried to join with a wrong password."));
             deny("Wrong server password.");
             return;
         }
@@ -241,6 +279,7 @@ fn handle_conn(stream: TcpStream, st: Arc<Mutex<State>>) {
                 udp_addr: None,
             },
         );
+        s.log(&format!("{} joined (session {session}).", s.clients[&session].name));
         s.broadcast_state();
     }
 
@@ -262,7 +301,8 @@ fn handle_conn(stream: TcpStream, st: Arc<Mutex<State>>) {
     }
 
     let mut s = lk(&st);
-    if s.clients.remove(&session).is_some() {
+    if let Some(c) = s.clients.remove(&session) {
+        s.log(&format!("{} left.", c.name));
         s.broadcast_state();
     }
 }
@@ -335,7 +375,7 @@ fn handle_msg(s: &mut State, me: u32, msg: C2S) {
             let id = s.next_room;
             s.next_room += 1;
             s.rooms.push(RoomInfo { id, name });
-            s.save_rooms();
+            s.save();
             s.broadcast_state();
         }
         C2S::DeleteRoom { room } if owner => {
@@ -349,7 +389,7 @@ fn handle_msg(s: &mut State, me: u32, msg: C2S) {
                     c.room = lobby;
                 }
             }
-            s.save_rooms();
+            s.save();
             s.broadcast_state();
         }
         _ => {}

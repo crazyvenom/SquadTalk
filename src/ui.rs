@@ -582,7 +582,19 @@ impl App {
                 let c = cfg();
                 (protocol::uid_of(&c.secret), c.host_rooms.clone())
             };
-            match server::start(port, password.clone(), owner_uid, rooms) {
+            let opts = server::Options {
+                port,
+                password: password.clone(),
+                owner_code: String::new(),
+                owner_uids: vec![owner_uid],
+                rooms,
+                on_save: Arc::new(|saved: server::Saved| {
+                    config::cfg().host_rooms = saved.rooms;
+                    config::save();
+                }),
+                log: false,
+            };
+            match server::start(opts) {
                 Ok(h) => self.server = Some(h),
                 Err(e) => {
                     return Some(format!(

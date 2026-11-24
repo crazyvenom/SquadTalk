@@ -9,35 +9,58 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  windows-app:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
-
       - uses: Swatinem/rust-cache@v2
-
-      - name: Build
-        run: cargo build --release
+      - name: Build the Windows app
+        run: cargo build --release --bin squadtalk
         env:
           # The bundled Opus library declares an old CMake version.
           CMAKE_POLICY_VERSION_MINIMUM: "3.5"
-
-      - name: Keep a copy of the app
-        uses: actions/upload-artifact@v4
+      - run: copy target\release\squadtalk.exe SquadTalk.exe
+      - uses: actions/upload-artifact@v4
         with:
-          name: SquadTalk
-          path: target/release/squadtalk.exe
+          name: windows-app
+          path: SquadTalk.exe
 
-      - name: Publish the download (Releases page)
-        shell: bash
+  linux-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+      - uses: Swatinem/rust-cache@v2
+      - name: Test the server
+        run: cargo test --no-default-features
+      - name: Build the Linux server
+        run: |
+          sudo apt-get install -y musl-tools
+          cargo build --release --no-default-features --bin squadtalk-server --target x86_64-unknown-linux-musl
+          cp target/x86_64-unknown-linux-musl/release/squadtalk-server squadtalk-server-linux-x64
+          ./squadtalk-server-linux-x64 --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-server
+          path: squadtalk-server-linux-x64
+
+  publish:
+    needs: [windows-app, linux-server]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: Publish the downloads (Releases page)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp target/release/squadtalk.exe SquadTalk.exe
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest SquadTalk.exe \
+          gh release create latest SquadTalk.exe squadtalk-server-linux-x64 oracle/setup.sh \
             --title "SquadTalk — latest build" \
-            --notes "Built automatically from commit ${GITHUB_SHA::7}. Download SquadTalk.exe below." \
+            --notes "Built automatically from commit ${GITHUB_SHA::7}. Download **SquadTalk.exe** to use the app. The other files are for the 24/7 server." \
             --prerelease --target "$GITHUB_SHA"
