@@ -47,8 +47,42 @@ jobs:
           name: linux-server
           path: squadtalk-server-linux-x64
 
+  android-app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+      - name: Signing key
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KSP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "ST_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "ST_KEYSTORE_PASS=$KSP" >> "$GITHUB_ENV"
+            echo "Signing with the owner's private key."
+          else
+            echo "Signing with the public test key."
+          fi
+      - name: Build the Android app
+        working-directory: android
+        run: gradle --no-daemon --stacktrace assembleRelease
+      - run: cp android/app/build/outputs/apk/release/app-release.apk SquadTalk.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-app
+          path: SquadTalk.apk
+
   publish:
-    needs: [windows-app, linux-server]
+    needs: [windows-app, linux-server, android-app]
+    if: ${{ !cancelled() && needs.windows-app.result == 'success' && needs.linux-server.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,8 +93,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          FILES="SquadTalk.exe squadtalk-server-linux-x64 oracle/setup.sh"
+          if [ -f SquadTalk.apk ]; then FILES="$FILES SquadTalk.apk"; fi
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest SquadTalk.exe squadtalk-server-linux-x64 oracle/setup.sh \
+          gh release create latest $FILES \
             --title "SquadTalk — latest build" \
-            --notes "Built automatically from commit ${GITHUB_SHA::7}. Download **SquadTalk.exe** to use the app. The other files are for the 24/7 server." \
+            --notes "Built automatically from commit ${GITHUB_SHA::7}. **SquadTalk.exe** = Windows app. **SquadTalk.apk** = Android app. The other files are for the 24/7 server." \
             --prerelease --target "$GITHUB_SHA"
