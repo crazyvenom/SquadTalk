@@ -14,7 +14,7 @@ Lightweight voice chat for gaming that you host yourself on your own PC. It's bu
 
 > **Windows may warn you the first time** ("Windows protected your PC"). This happens because the app is new and unsigned. Click **More info**, then **Run anyway**.
 
-**Giving it to friends:** this project is private, so friends can't open the Releases page. Send them the `SquadTalk.exe` file directly, using WhatsApp, Google Drive or a pen drive.
+**Giving it to friends:** send them the link to the Releases page, or send the `SquadTalk.exe` file directly.
 
 ## Android app
 
