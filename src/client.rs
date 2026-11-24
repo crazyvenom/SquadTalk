@@ -150,7 +150,7 @@ fn run(
         Ok(s) => s,
         Err(e) => {
             return fail(format!(
-                "Nobody answered at {addr} (port {port}).\n\nCheck that:\n• the host clicked \"Host a server\"\n• Tailscale is turned on for both of you\n• the address is the host's Tailscale IP\n\n(Details: {e})"
+                "Nobody answered at {addr} (port {port}).\n\nCheck that:\n• the address and port are typed correctly\n• the server is running\n• the server's port is open for both TCP and UDP\n\n(Details: {e})"
             ))
         }
     };

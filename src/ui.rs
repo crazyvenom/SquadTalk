@@ -197,11 +197,12 @@ pub fn key_name(vk: i32) -> String {
     }
 }
 
-fn tailscale_ip() -> Option<String> {
+/// This PC's address on the home network (Wi-Fi / LAN).
+fn lan_ip() -> Option<String> {
     let s = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
-    s.connect("100.100.100.100:53").ok()?;
+    s.connect("8.8.8.8:53").ok()?; // no data is sent; this just picks the right network card
     match s.local_addr().ok()?.ip() {
-        std::net::IpAddr::V4(v4) if v4.octets()[0] == 100 => Some(v4.to_string()),
+        std::net::IpAddr::V4(v4) if !v4.is_loopback() && !v4.is_unspecified() => Some(v4.to_string()),
         _ => None,
     }
 }
@@ -398,36 +399,28 @@ impl App {
         ];
         self.ed_name = self.edit(p, &name, 0, x, 78, 320, 26, 0);
         v.push(self.ed_name);
-        v.push(self.label(p, "Server address (the host's Tailscale IP, looks like 100.101.102.103)", x, 116, 600, 20));
+        v.push(self.label(p, "Server address (ask the server owner, looks like 140.238.12.34)", x, 116, 600, 20));
         self.ed_addr = self.edit(p, &addr, 0, x, 136, 320, 26, 0);
         v.push(self.ed_addr);
-        v.push(self.label(p, "Port (leave as 9987 unless the host changed it)", x, 174, 400, 20));
+        v.push(self.label(p, "Port (leave as 9987 unless the owner changed it)", x, 174, 400, 20));
         self.ed_port = self.edit(p, &port, ES_NUMBER, x, 194, 100, 26, 0);
         v.push(self.ed_port);
         v.push(self.label(p, "Server password (leave empty if there is none)", x, 232, 400, 20));
         self.ed_pass = self.edit(p, &pass, ES_PASSWORD, x, 252, 320, 26, 0);
         v.push(self.ed_pass);
         v.push(self.button(p, "Join server", x, 296, 320, 34, ID_JOIN));
-        v.push(self.label(
-            p,
-            "Want to host instead? Your friends connect to your PC. The password above becomes your server's password.",
-            x,
-            350,
-            700,
-            20,
-        ));
-        v.push(self.button(p, "Host a server on this PC", x, 374, 320, 34, ID_HOST));
-        v.push(self.button(p, "Audio and push-to-talk settings", x, 430, 320, 30, ID_SETTINGS_C));
-        self.c_status = self.label(p, "", x, 476, 700, 20);
+        v.push(self.button(p, "Audio and push-to-talk settings", x, 344, 320, 30, ID_SETTINGS_C));
+        self.c_status = self.label(p, "", x, 384, 700, 20);
         v.push(self.c_status);
         v.push(self.label(
             p,
-            "Tip: everyone needs Tailscale turned on and signed in to the same Tailscale network.",
+            "Advanced: run a temporary server on this PC, for people on the same Wi-Fi.",
             x,
-            510,
+            470,
             700,
             20,
         ));
+        v.push(self.button(p, "Host on this PC (same Wi-Fi only)", x, 492, 320, 28, ID_HOST));
         unsafe {
             EnableWindow(self.ed_name, 1);
             SendMessageW(self.ed_name, EM_SETLIMITTEXT, 24, 0);
@@ -564,7 +557,7 @@ impl App {
         };
         let password = get_text(self.ed_pass);
         if !host && addr.is_empty() {
-            return Some("Type the server address first (the host's Tailscale IP, like 100.101.102.103).".into());
+            return Some("Type the server address first (ask the server owner, it looks like 140.238.12.34).".into());
         }
         {
             let mut c = cfg();
@@ -637,14 +630,14 @@ impl App {
         self.start_audio();
         if self.hosting {
             let port = cfg().port;
-            self.log("Your server is running. You are the owner.");
-            match tailscale_ip() {
-                Some(ip) => self.log(&format!("Friends join with address: {ip}   (port {port})")),
-                None => self.log("Tailscale was not detected. Turn on Tailscale so friends can reach you."),
+            self.log("A temporary server is running on this PC. You are the owner.");
+            if let Some(ip) = lan_ip() {
+                self.log(&format!("People on the same Wi-Fi can join with address: {ip}   (port {port})"));
             }
             if !cfg().password.is_empty() {
                 self.log("They also need the server password you typed.");
             }
+            self.log("For friends in other places, use your 24/7 Oracle server instead.");
         } else {
             self.log("Connected to the server.");
         }
