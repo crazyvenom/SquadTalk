@@ -16,6 +16,10 @@ Lightweight voice chat for gaming that you host yourself on your own PC. It's bu
 
 **Giving it to friends:** this project is private, so friends can't open the Releases page. Send them the `SquadTalk.exe` file directly, using WhatsApp, Google Drive or a pen drive.
 
+## 24/7 server on Oracle Cloud (recommended)
+
+Run the server on a free Oracle Cloud machine, so it's always online and friends install nothing but SquadTalk. Follow **[oracle/GUIDE.md](oracle/GUIDE.md)**. The steps below are for hosting on your own PC instead.
+
 ## 2. Set up Tailscale (once, everyone)
 
 Tailscale creates a private, secure network between your PCs, so friends can reach your server without any router settings.
