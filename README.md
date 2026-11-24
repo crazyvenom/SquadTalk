@@ -1,65 +1,64 @@
 # SquadTalk
 
-Lightweight voice chat for gaming that you host yourself on your own PC. It's built to use as little memory and CPU as possible.
+Lightweight voice chat for gaming, on your own 24/7 server. It's built to use as little memory and CPU as possible.
 
-**Features:** push-to-talk on any keyboard key or mouse button, voice-activated mode, rooms that the owner creates, mute and deafen, volume per person, a server password, owner tools (kick, move, server-mute), room text chat, and talk/join/leave sounds.
+**Features:**
+- Push-to-talk on any keyboard key or mouse button, or a voice-activated mode
+- Rooms that the owner creates
+- Mute and deafen, plus volume for each person
+- A server password
+- Owner tools: kick, move, server-mute
+- Text chat for each room
+- Talk, join and leave sounds
+
+**Apps:** Windows (`SquadTalk.exe`) and Android (`SquadTalk.apk`). Everyone joins the same server and rooms.
 
 ---
 
-## 1. Get the app
+## How it works
 
-1. Open this project on GitHub and click **Releases** on the right side.
-2. Under **SquadTalk — latest build**, click **SquadTalk.exe** to download it.
-3. Put it anywhere you like, for example on your Desktop. There's nothing to install.
+```
+ Your friends (PC or phone)  ──►  Your SquadTalk server on Oracle Cloud (free, 24/7)
+```
 
-> **Windows may warn you the first time** ("Windows protected your PC"). This happens because the app is new and unsigned. Click **More info**, then **Run anyway**.
+- The **server owner** sets up the server once. Follow **[oracle/GUIDE.md](oracle/GUIDE.md)**.
+- **Everyone else** installs SquadTalk and types the server's **address** and **password**. Nothing else is needed.
 
-**Giving it to friends:** send them the link to the Releases page, or send the `SquadTalk.exe` file directly.
+## Get the app
 
-## Android app
+Go to the **[Releases page](https://github.com/crazyvenom/SquadTalk/releases)**, open **latest**, then download:
 
-**SquadTalk.apk** on the Releases page runs on Android 10 and newer, and joins the same server and rooms. Setup and tips are in **[android/GUIDE.md](android/GUIDE.md)**.
+- **SquadTalk.exe** for Windows. There's nothing to install: put it on your Desktop and double-click it.
+  > The first time, Windows may say "Windows protected your PC". Click **More info**, then **Run anyway**. This happens because the app is new and unsigned.
+- **SquadTalk.apk** for Android 10 and newer. Install steps and phone tips are in **[android/GUIDE.md](android/GUIDE.md)**.
 
-## 24/7 server on Oracle Cloud (recommended)
-
-Run the server on a free Oracle Cloud machine, so it's always online and friends install nothing but SquadTalk. Follow **[oracle/GUIDE.md](oracle/GUIDE.md)**. The steps below are for hosting on your own PC instead.
-
-## 2. Set up Tailscale (once, everyone)
-
-Tailscale creates a private, secure network between your PCs, so friends can reach your server without any router settings.
-
-1. Everyone installs Tailscale from **tailscale.com/download** and signs in.
-2. **Host:** in the Tailscale admin page (login.tailscale.com), go to **Users** and invite your friends. Alternatively, use **Share** on your PC's machine page to share just your PC with them.
-3. When Tailscale is running, your PC's Tailscale address looks like `100.x.y.z`. You can see it by clicking the Tailscale icon in the taskbar.
-
-## 3. Host the server (owner)
-
-1. Open SquadTalk, type your name, and (optionally) type a password.
-2. Click **Host a server on this PC**.
-3. If Windows Firewall asks, tick **both Private and Public** and click **Allow access**.
-4. The chat box shows the address your friends should use, for example `100.101.102.103`.
-
-You're the owner. Use **Owner tools** to add or delete rooms and to kick, move or server-mute people.
-
-## 4. Join (friends)
+## Join the server
 
 1. Open SquadTalk and type your name.
-2. Type the host's Tailscale address and the password, then click **Join server**.
+2. Type the **server address** and the **password** that the owner gave you. Leave the port as **9987**.
+3. Click **Join server**.
 
-## 5. Talking
+**Owner:** the first time, type your **owner code** as the password. The server then remembers your device as the owner.
 
-- The default push-to-talk key is **`** (left of 1). Change it in **Settings → Change key…**, and press any key or mouse button, including the side buttons.
-- Or pick **Voice activation** in Settings and adjust the level until it only picks up your voice.
-- Double-click a room to move into it. Select a person to change their volume.
+## Talking (PC)
+
+- **Push-to-talk:** the default key is **`** (left of 1). To change it, go to **Settings**, click **Change key…**, and press any key or mouse button, including the side buttons.
+- **Voice activation:** pick it in **Settings**, then adjust the level until it only picks up your voice.
+- **Rooms and volume:** double-click a room to move into it. Select a person to change their volume.
 - **If push-to-talk doesn't work inside a game:** some games run "as administrator". Right-click SquadTalk.exe, choose **Run as administrator**, and try again.
 
 Settings are saved in `%APPDATA%\SquadTalk\config.json`.
+
+## Advanced: temporary server on your own PC
+
+The Windows app also has **Host on this PC (same Wi-Fi only)**, for quick tests with people on the same home network. Friends elsewhere should use the Oracle server.
 
 ---
 
 ## For the technically curious
 
-- Written in Rust with native Win32 controls: no browser engine and no GPU use.
-- Voice is Opus at 32 kbps, 20 ms frames. The server relays packets without decoding them.
+- The Windows app is written in Rust with native Win32 controls: no browser engine and no GPU use.
+- The Android app is Kotlin and Jetpack Compose, using the same Opus codec through a small native library.
+- Voice is Opus at 32 kbps with 20 ms frames, and the server relays packets without decoding them.
 - TCP port 9987 carries control and chat, and UDP port 9987 carries voice.
-- Every push to `main` is built on GitHub's Windows machines and published to Releases.
+- Every push to `main` is built on GitHub (Windows app, Linux server, Android app), tested, and published to Releases.
